@@ -1,0 +1,156 @@
+#include <DHT.h>
+#include <LiquidCrystal_I2C.h>
+#include <MQ135.h>
+
+LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+//Constants
+int MQ135_in;
+int MQ135_out;
+int targetTemperature = 25;
+const int rainSensorPin = A2;
+const int buttonPinIncrease = 7;  
+const int buttonPinDecrease = 8;
+const int rainThreshold = 600;
+
+#define DHTPIN_in 4   
+#define DHTPIN_out 3  // what pin we're connected to
+#define DHTTYPE DHT22   // DHT 22  (AM2302)
+DHT dht_in(DHTPIN_in, DHTTYPE); //// Initialize DHT sensor for normal 16mhz Arduino
+DHT dht_out(DHTPIN_out, DHTTYPE);
+
+
+float hum_in;  //Stores humidity value
+float temp_in; //Stores temperature value
+float hum_out;  //Stores humidity value
+float temp_out;
+
+void setup()
+{
+  Serial.begin(9600);
+  dht_in.begin();
+  dht_out.begin();
+
+  pinMode(buttonPinIncrease, INPUT_PULLUP);  // Set button pins as input with internal pull-up resistors
+  pinMode(buttonPinDecrease, INPUT_PULLUP);
+
+  lcd.init();
+  lcd.clear();         
+  lcd.backlight();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Temperature: ");
+  lcd.setCursor(19, 0);
+  lcd.print("C");  
+  
+  
+  lcd.setCursor(0, 1);
+  lcd.print("Humidity   : ");
+  lcd.setCursor(19, 1);
+  lcd.print("%");
+
+  lcd.setCursor(0, 2);
+  lcd.print("Air Qual In: ");
+
+  lcd.setCursor(17, 2);
+  lcd.print("PPM");
+
+  lcd.setCursor(0, 3);
+  lcd.print("Target Temp: ");
+
+  lcd.setCursor(19, 3);
+  lcd.print("C");
+
+}
+
+void loop()
+{
+    delay(500);
+    
+    hum_in = dht_in.readHumidity();
+    temp_in= dht_in.readTemperature();
+    hum_out = dht_out.readHumidity();
+    temp_out= dht_out.readTemperature();    
+
+    MQ135_in = analogRead(0); // read analog input pin 0
+    MQ135_out = analogRead(1); // read analog input pin 1
+
+    bool increaseButtonState = digitalRead(buttonPinIncrease) == LOW;
+    bool decreaseButtonState = digitalRead(buttonPinDecrease) == LOW;   
+   
+    int sensorValue = analogRead(rainSensorPin);
+    
+    Serial.print("Humidity_in: ");
+    Serial.print(hum_in);
+    Serial.print(" %, Temp_in: ");
+    Serial.print(temp_in);
+    Serial.println(" Celsius");
+    Serial.print("Humidity_out: ");
+    Serial.print(hum_out);
+    Serial.print(" %, Temp_out: ");
+    Serial.print(temp_out);
+    Serial.println(" Celsius");
+    Serial.print("Air Quality IN : ");
+    Serial.print(MQ135_in, DEC); // prints the value read
+    Serial.println("PPM");
+    Serial.print("Air Quality OUT: ");
+    Serial.print(MQ135_out, DEC); // prints the value read
+    Serial.println("PPM"); 
+    Serial.print("rain pwm: ");
+    Serial.println(sensorValue);
+    Serial.println(targetTemperature); 
+    if(MQ135_in>=200){
+      Serial.println("Bad");
+    } 
+   else if(MQ135_in>=100&&MQ135_in<=200){
+      Serial.println("Good");
+    }
+    else{
+      Serial.print("Normal");
+    }
+     
+    if (sensorValue < rainThreshold) {
+    // It's raining, do something (e.g., turn on a relay or LED)
+    Serial.println("It's Raining");} 
+    else {
+    // It's not raining, do something else (e.g., turn off the relay or LED)
+    Serial.println("Not Raining");
+    }
+    Serial.println("           ");
+
+    if (increaseButtonState) {
+    targetTemperature++;
+    lcd.setCursor(13, 3);
+    lcd.print("  ");
+    lcd.setCursor(13, 3);
+    lcd.print(targetTemperature);
+    delay(200);
+  }
+
+   if (decreaseButtonState) {
+    targetTemperature--;
+    lcd.setCursor(13, 3);
+    lcd.print("  ");
+    lcd.setCursor(13, 3);
+    lcd.print(targetTemperature);
+    delay(200);
+    }
+  
+
+    lcd.setCursor(13, 0);
+    lcd.print("  ");
+    lcd.setCursor(13, 0);
+    lcd.print(temp_in);
+    lcd.setCursor(13, 1);
+    lcd.print("  ");
+    lcd.setCursor(13, 1);
+    lcd.print(hum_in);
+    lcd.setCursor(13, 2);
+    lcd.print("   ");  
+    lcd.setCursor(13, 2);
+    lcd.print(MQ135_in);
+    lcd.setCursor(13, 3);
+    lcd.print(targetTemperature);
+    delay(500);
+
+}
